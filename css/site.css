@@ -204,16 +204,6 @@ img{max-width:100%}
 .hero-video{object-fit:cover;opacity:0}
 .hero-media.has-video .hero-canvas{opacity:0}
 .hero-media.has-video .hero-video{opacity:1}
-.hero-media-label{
-  position:absolute;left:clamp(20px,2vw,34px);bottom:clamp(20px,2vw,34px);
-  z-index:2;font:800 11px/1 Instrument Sans,sans-serif;letter-spacing:.18em;
-  text-transform:uppercase;color:rgba(247,242,234,.62)
-}
-.hero-media-label:before{
-  content:"";display:inline-block;width:28px;height:2px;background:var(--teal);
-  margin-right:12px;vertical-align:middle
-}
-
 /* scroll cue */
 .hero-cue{
   position:absolute;left:var(--gutter);bottom:22px;z-index:3;text-decoration:none;

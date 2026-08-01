@@ -200,9 +200,9 @@
   function paint(ms) {
     var k = ease(reduce ? 1 : cycle(ms));
     var barH = Math.max(4, Math.min(8, H / 90));
-    // keep the field clear of the corner label
+    // even breathing room top and bottom now the corner label is gone
     var padTop = H * 0.06;
-    var padBot = 74;
+    var padBot = H * 0.06;
     var slot = (H - padTop - padBot) / (bars.length + 1);
 
     ctx.clearRect(0, 0, W, H);
