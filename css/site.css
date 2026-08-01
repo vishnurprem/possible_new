@@ -248,6 +248,43 @@ img{max-width:100%}
 /* ---- proof strip: more editorial ---------------------------------- */
 .proof-strip-quote{font-size:clamp(26px,3.2vw,44px);line-height:1.28;text-wrap:balance}
 
+/* line-by-line mask reveal.
+   Each visual line becomes its own clipping block and its inner span rises
+   from below. Lines are measured at runtime because the lime highlight runs
+   across line breaks — there is no markup to split on. */
+.q-line{display:block;overflow:hidden}
+.q-line>span{
+  display:block;
+  transform:translateY(108%);
+  transition:transform .82s var(--ease-out);
+  transition-delay:var(--ql-d,0ms);
+  will-change:transform
+}
+.q-lit .q-line>span{transform:none;will-change:auto}
+
+/* the split rebuilds the highlight per token so it stays continuous
+   across words, spaces and line breaks */
+.proof-strip-quote .qhl{
+  background:linear-gradient(0deg,rgba(204,255,51,.46) 38%,transparent 0)
+}
+
+.proof-strip .kicker,
+.proof-strip .proof-strip-attr,
+.proof-strip .text-link{
+  opacity:0;transform:translateY(18px);
+  transition:opacity .6s var(--ease-out),transform .6s var(--ease-out);
+  transition-delay:var(--ql-d,0ms)
+}
+.proof-strip.q-lit .kicker,
+.proof-strip.q-lit .proof-strip-attr,
+.proof-strip.q-lit .text-link{opacity:1;transform:none}
+
+@media(prefers-reduced-motion:reduce){
+  .q-line>span{transform:none!important;transition:none!important}
+  .proof-strip .kicker,.proof-strip .proof-strip-attr,.proof-strip .text-link{
+    opacity:1!important;transform:none!important;transition:none!important}
+}
+
 /* ---- scroll reveals ------------------------------------------------
    One system, applied to a section's own children so the eye can read a
    sequence instead of a whole block fading at once. Transform + opacity

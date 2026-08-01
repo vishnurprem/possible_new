@@ -219,6 +219,171 @@
 })();
 
 /* ------------------------------------------------------------------
+   Proof-strip pull quote — line-by-line mask reveal.
+
+   The lime highlight runs across word and line boundaries, so there is no
+   markup to split on. Every token (word AND whitespace) is wrapped, its
+   line worked out from its measured top offset, then each line is rebuilt
+   as a clipping block whose inner span rises into place.
+
+   Whitespace is wrapped too, and inherits the highlight, so the lime band
+   stays continuous instead of striping between words.
+------------------------------------------------------------------- */
+(function () {
+  var section = document.querySelector('.proof-strip');
+  if (!section) return;
+  var quote = section.querySelector('.proof-strip-quote');
+  if (!quote) return;
+
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var LINE_STAGGER = 90;   // ms between lines
+  var LEAD = 90;           // ms before the first line moves
+  var original = quote.innerHTML;
+  var lit = false;
+  var lineCount = 0;
+
+  function tokenize(root) {
+    var out = [];
+    (function walk(node, hl) {
+      for (var i = 0; i < node.childNodes.length; i++) {
+        var n = node.childNodes[i];
+        if (n.nodeType === 3) {
+          var parts = n.textContent.split(/(\s+)/);
+          for (var p = 0; p < parts.length; p++) {
+            if (parts[p] !== '') out.push({ t: parts[p], hl: hl });
+          }
+        } else if (n.nodeType === 1) {
+          walk(n, hl || (n.classList && n.classList.contains('qhl')));
+        }
+      }
+    })(root, false);
+    return out;
+  }
+
+  function split() {
+    quote.innerHTML = original;
+    var tokens = tokenize(quote);
+
+    // pass 1 — every token becomes an inline span we can measure
+    quote.innerHTML = '';
+    var spans = tokens.map(function (tok) {
+      var s = document.createElement('span');
+      s.textContent = tok.t;
+      if (tok.hl) s.className = 'qhl';
+      quote.appendChild(s);
+      return s;
+    });
+
+    // pass 2 — group by vertical position
+    var lines = [], last = null;
+    spans.forEach(function (s) {
+      var top = Math.round(s.getBoundingClientRect().top);
+      if (last === null || Math.abs(top - last) > 4) {
+        lines.push([]);
+        last = top;
+      }
+      lines[lines.length - 1].push(s);
+    });
+
+    // pass 3 — rebuild as clipping blocks
+    quote.innerHTML = '';
+    lines.forEach(function (group, i) {
+      var outer = document.createElement('span');
+      outer.className = 'q-line';
+      var inner = document.createElement('span');
+      inner.style.setProperty('--ql-d', (LEAD + i * LINE_STAGGER) + 'ms');
+      // drop a trailing space so the highlight cannot run past the line end
+      while (group.length && /^\s+$/.test(group[group.length - 1].textContent)) {
+        group.pop();
+      }
+      group.forEach(function (s) { inner.appendChild(s); });
+      outer.appendChild(inner);
+      quote.appendChild(outer);
+    });
+    lineCount = lines.length;
+
+    // the surrounding elements pick up where the lines finish
+    var tail = LEAD + lineCount * LINE_STAGGER;
+    var kicker = section.querySelector('.kicker');
+    if (kicker) kicker.style.setProperty('--ql-d', '0ms');
+    var attr = section.querySelector('.proof-strip-attr');
+    if (attr) attr.style.setProperty('--ql-d', tail + 'ms');
+    var link = section.querySelector('.text-link');
+    if (link) link.style.setProperty('--ql-d', (tail + 80) + 'ms');
+  }
+
+  if (reduce) {
+    section.classList.add('q-lit');
+    return;
+  }
+
+  function ready(fn) {
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fn);
+    else fn();
+  }
+
+  ready(function () {
+    split();
+
+    function light() {
+      if (lit) return;
+      lit = true;
+      section.classList.add('q-lit');
+    }
+
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (es) {
+        es.forEach(function (e) {
+          if (e.isIntersecting) { light(); io.disconnect(); }
+        });
+      }, { rootMargin: '0px 0px -20% 0px', threshold: 0 });
+      io.observe(section);
+    }
+
+    // same safety net as the generic reveals: never leave the quote hidden
+    function sweep() {
+      if (lit) return;
+      if (section.getBoundingClientRect().top < window.innerHeight * 0.8) light();
+    }
+    var ticking = false;
+    window.addEventListener('scroll', function () {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(function () { sweep(); ticking = false; });
+    }, { passive: true });
+    window.addEventListener('load', sweep);
+    window.addEventListener('routechange', function () { setTimeout(sweep, 0); });
+    setTimeout(sweep, 300);
+
+    // line breaks change with width — re-measure, and skip the animation
+    // if it has already played
+    var rt, w = window.innerWidth;
+    window.addEventListener('resize', function () {
+      if (window.innerWidth === w) return;
+      w = window.innerWidth;
+      clearTimeout(rt);
+      rt = setTimeout(function () {
+        var wasLit = lit;
+        section.classList.remove('q-lit');
+        split();
+        if (wasLit) {
+          void quote.offsetWidth;          // flush, then restore instantly
+          quote.querySelectorAll('.q-line>span').forEach(function (s) {
+            s.style.transition = 'none';
+          });
+          section.classList.add('q-lit');
+          requestAnimationFrame(function () {
+            quote.querySelectorAll('.q-line>span').forEach(function (s) {
+              s.style.transition = '';
+            });
+          });
+        }
+      }, 180);
+    });
+  });
+})();
+
+/* ------------------------------------------------------------------
    Scroll reveals.
 
    One shared system. Each section nominates the children that should
@@ -228,7 +393,7 @@
 (function () {
   var GROUPS = [
     ['.clients',      ['.client-marquee-label', '.client-static-grid']],
-    ['.proof-strip',  ['.kicker', '.proof-strip-quote', '.proof-strip-attr', '.text-link']],
+    // .proof-strip is handled by the line-reveal module below
     ['.pov',          ['.lines', '.kicker', '.lock-big', '.bridge', '.lock-lower', '.pov-copy']],
     ['.work-intro',   ['.lines', '.kicker', '.work-title', '.work-sub', '.work-copy']],
     ['.cards-sec',    ['.card']],
