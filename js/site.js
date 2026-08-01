@@ -72,15 +72,49 @@
   var btn = document.querySelector('.nav-toggle');
   var links = document.getElementById('navlinks');
   if (!btn || !links) return;
-  btn.addEventListener('click', function () {
-    var open = links.classList.toggle('open');
+
+  var open = false;
+
+  function set(next) {
+    if (next === open) return;
+    open = next;
+    links.classList.toggle('open', open);
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.setAttribute('aria-label', open ? 'Close menu' : 'Menu');
+  }
+
+  // pointerup rather than click: iOS delays click behind its 300ms
+  // double-tap check, which made the burger flip before the panel moved
+  btn.addEventListener('pointerup', function (e) {
+    e.preventDefault();
+    set(!open);
   });
+  // keyboard and any browser without pointer events
+  btn.addEventListener('click', function (e) {
+    e.preventDefault();
+    if (e.detail === 0) set(!open);          // fired by Enter/Space
+  });
+
   links.addEventListener('click', function (e) {
-    if (e.target.tagName === 'A') {
-      links.classList.remove('open');
-      btn.setAttribute('aria-expanded', 'false');
-    }
+    if (e.target.closest('a')) set(false);
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && open) { set(false); btn.focus(); }
+  });
+
+  document.addEventListener('pointerdown', function (e) {
+    if (!open) return;
+    if (!links.contains(e.target) && !btn.contains(e.target)) set(false);
+  });
+
+  // a width change can move us back to the desktop row; drop the state
+  // so the panel never gets stranded open
+  var w = window.innerWidth;
+  window.addEventListener('resize', function () {
+    if (window.innerWidth === w) return;     // iOS fires on URL-bar show/hide
+    w = window.innerWidth;
+    set(false);
   });
 })();
 

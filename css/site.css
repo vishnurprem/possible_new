@@ -35,17 +35,65 @@ img{max-width:100%}
 .nav-toggle[aria-expanded="true"] span:nth-child(3){transform:translateY(-9.5px) rotate(-45deg)}
 
 @media(max-width:900px){
+  /* SHARED_CSS clips header overflow so the decorative rules can't widen
+     the page. The dropdown sits BELOW the header box, and WebKit honours
+     that clip on the cross axis differently from desktop Chrome — which
+     erased the menu on iOS. Opt the nav out of the clip. */
+  .nav{overflow:visible!important}
+
+  /* backdrop-filter on a sticky header makes iOS composite an absolutely
+     positioned child badly: it flickers, or paints then disappears. The
+     blur buys nothing on a solid mobile bar. */
+  .nav{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+    background:var(--cream)!important}
+
   .nav-inner{display:flex!important;align-items:center;justify-content:space-between;
     height:66px;padding:0 var(--gutter)}
   .nav-toggle{display:flex}
-  .nav-links{position:absolute;left:0;right:0;top:100%;display:none;
-    flex-direction:column;align-items:flex-start;gap:0;margin:0;
+
+  /* display is not animatable, which is why open/close had no easing.
+     Keep it laid out and move opacity/transform instead; visibility is
+     delayed on the way out so the panel stays inert once hidden. */
+  .nav-links{
+    position:absolute;left:0;right:0;top:100%;
+    display:flex!important;flex-direction:column;align-items:stretch;
+    gap:0;margin:0;
     background:var(--cream);border-bottom:1px solid var(--line);
-    padding:8px var(--gutter) 20px}
-  .nav-links.open{display:flex}
-  .nav-links a{display:block;width:100%;padding:15px 0;font-size:13px;
-    border-bottom:1px solid var(--line)}
+    padding:4px var(--gutter) 18px;
+    opacity:0;visibility:hidden;pointer-events:none;
+    transform:translate3d(0,-10px,0);
+    transition:opacity .26s var(--ease-out),transform .26s var(--ease-out),
+               visibility 0s linear .26s;
+    box-shadow:0 18px 30px -22px rgba(18,28,43,.5)
+  }
+  .nav-links.open{
+    opacity:1;visibility:visible;pointer-events:auto;
+    transform:translate3d(0,0,0);
+    transition:opacity .26s var(--ease-out),transform .26s var(--ease-out),
+               visibility 0s linear 0s
+  }
+
+  .nav-links a{
+    display:block;width:100%;padding:15px 0;font-size:13px;
+    border-bottom:1px solid var(--line);
+    opacity:0;transform:translate3d(0,-6px,0);
+    transition:opacity .22s var(--ease-out),transform .22s var(--ease-out)
+  }
+  .nav-links.open a{opacity:1;transform:none}
+  .nav-links.open a:nth-child(1){transition-delay:.06s}
+  .nav-links.open a:nth-child(2){transition-delay:.10s}
+  .nav-links.open a:nth-child(3){transition-delay:.14s}
+  .nav-links.open a:nth-child(4){transition-delay:.18s}
+  .nav-links.open a:nth-child(5){transition-delay:.22s}
   .nav-links a:last-child{border-bottom:0;padding:22px 0 14px}
+
+  .nav-toggle span{
+    transition:transform .28s var(--ease-out),opacity .18s var(--ease)}
+}
+
+@media(max-width:900px) and (prefers-reduced-motion:reduce){
+  .nav-links,.nav-links a,.nav-toggle span{transition:none!important}
+  .nav-links a{opacity:1;transform:none}
 }
 
 /* ---- proof strip on the homepage ----------------------------------- */
