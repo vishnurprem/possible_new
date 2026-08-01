@@ -219,6 +219,132 @@
 })();
 
 /* ------------------------------------------------------------------
+   Inertial scroll.
+
+   Eases the page toward a target instead of jumping with the wheel. Kept
+   deliberately narrow, because hijacking scroll is easy to get wrong:
+
+     - pointer:fine only — touch already has better native momentum
+     - off entirely under prefers-reduced-motion
+     - keyboard, scrollbar drag and Find-in-page stay native, and we
+       resync to them rather than fight
+     - nested scrollables (the card backs) keep their own scrolling
+     - same-page anchors tween; hash ROUTES in the single-file build are
+       left alone so the router still works
+
+   CSS scroll-behavior is switched to auto only when this takes over, so
+   the no-JS, touch and reduced-motion paths keep the native smoothing.
+------------------------------------------------------------------- */
+(function () {
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var fine = window.matchMedia('(pointer: fine)').matches;
+  if (reduce || !fine) return;
+
+  var root = document.documentElement;
+  var prevBehavior = root.style.scrollBehavior;
+  root.style.scrollBehavior = 'auto';
+
+  var EASE = 0.115;
+  var NAV = 76;                 // sticky header height
+  var target = window.scrollY;
+  var current = target;
+  var raf = null;
+  var driving = false;
+
+  function limit() {
+    return Math.max(0, root.scrollHeight - window.innerHeight);
+  }
+
+  function loop() {
+    var delta = target - current;
+    if (Math.abs(delta) < 0.5) {
+      current = target;
+      window.scrollTo(0, Math.round(current));
+      raf = null;
+      driving = false;
+      return;
+    }
+    current += delta * EASE;
+    window.scrollTo(0, Math.round(current));
+    raf = requestAnimationFrame(loop);
+  }
+
+  function drive() {
+    if (raf) return;
+    driving = true;
+    raf = requestAnimationFrame(loop);
+  }
+
+  function scrollable(el) {
+    while (el && el !== document.body) {
+      if (el.scrollHeight > el.clientHeight + 2) {
+        var oy = getComputedStyle(el).overflowY;
+        if (oy === 'auto' || oy === 'scroll') return true;
+      }
+      el = el.parentElement;
+    }
+    return false;
+  }
+
+  window.addEventListener('wheel', function (e) {
+    if (e.ctrlKey) return;                 // pinch-zoom
+    if (scrollable(e.target)) return;      // let inner panes scroll themselves
+    e.preventDefault();
+    if (!driving) current = window.scrollY;
+    var d = e.deltaY;
+    if (e.deltaMode === 1) d *= 16;        // lines
+    else if (e.deltaMode === 2) d *= window.innerHeight;
+    target = Math.max(0, Math.min(limit(), target + d));
+    drive();
+  }, { passive: false });
+
+  // anything that scrolls natively wins; adopt its position
+  window.addEventListener('scroll', function () {
+    if (!driving) { target = current = window.scrollY; }
+  }, { passive: true });
+
+  window.addEventListener('resize', function () {
+    target = current = window.scrollY;
+  });
+
+  function tweenTo(y) {
+    if (!driving) current = window.scrollY;
+    target = Math.max(0, Math.min(limit(), y));
+    drive();
+  }
+
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href]');
+    if (!a) return;
+    var href = a.getAttribute('href') || '';
+    var i = href.indexOf('#');
+    if (i === -1) return;
+
+    var hash = href.slice(i + 1);
+    if (!hash || hash.charAt(0) === '/') return;   // '#/about' is a route
+    var base = href.slice(0, i);
+    if (base && base !== location.pathname.split('/').pop()) return;
+
+    var el = document.getElementById(hash);
+    if (!el) return;
+    e.preventDefault();
+    tweenTo(el.getBoundingClientRect().top + window.scrollY - NAV);
+    if (history.replaceState) history.replaceState(null, '', '#' + hash);
+  }, true);
+
+  // the router jumps between views; land at the top without a glide
+  window.addEventListener('routechange', function () {
+    if (raf) { cancelAnimationFrame(raf); raf = null; }
+    driving = false;
+    target = current = window.scrollY;
+  });
+
+  window.addEventListener('pagehide', function () {
+    root.style.scrollBehavior = prevBehavior;
+  });
+})();
+
+/* ------------------------------------------------------------------
    Logo wall — rows rise in sequence.
 
    The grid is 15 flat spans with no row markup, and the column count
