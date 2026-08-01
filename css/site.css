@@ -216,6 +216,27 @@ img{max-width:100%}
 .brand{opacity:.55;transition:opacity var(--dur) var(--ease),filter var(--dur) var(--ease)}
 .brand:hover{opacity:1;filter:grayscale(0)}
 
+/* logo wall: rows rise in sequence.
+   Rest opacity is .55, so the reveal lands there — not on 1 — and hover
+   still lifts to full with its own short transition and no delay. */
+.clients.logos-ready .brand{
+  opacity:0;
+  transform:translateY(28px);
+  transition:opacity .6s var(--ease-out),transform .6s var(--ease-out),
+             filter var(--dur) var(--ease);
+  transition-delay:var(--lg-d,0ms),var(--lg-d,0ms),0ms
+}
+.clients.logos-in .brand{opacity:.55;transform:none}
+.clients.logos-in .brand:hover{
+  opacity:1;filter:grayscale(0);
+  transition:opacity var(--dur) var(--ease),filter var(--dur) var(--ease);
+  transition-delay:0ms
+}
+@media(prefers-reduced-motion:reduce){
+  .clients.logos-ready .brand{
+    opacity:.55!important;transform:none!important;transition:none!important}
+}
+
 /* ---- service cards: hover reveal instead of the flip -------------- */
 .card{perspective:none!important}
 .card-inner{transform:none!important;transition:none!important;transform-style:flat!important}

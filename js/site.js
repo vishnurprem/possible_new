@@ -219,6 +219,120 @@
 })();
 
 /* ------------------------------------------------------------------
+   Logo wall — rows rise in sequence.
+
+   The grid is 15 flat spans with no row markup, and the column count
+   changes at mobile widths, so rows are worked out by measuring each
+   logo's top offset rather than assumed. Within a row there is a small
+   left-to-right offset so it sweeps instead of snapping as a block.
+------------------------------------------------------------------- */
+(function () {
+  var section = document.querySelector('.clients');
+  if (!section) return;
+  var grid = section.querySelector('.client-static-grid');
+  if (!grid) return;
+
+  var brands = [].slice.call(grid.querySelectorAll('.brand'));
+  if (!brands.length) return;
+
+  var ROW_STAGGER = 130;   // ms between rows
+  var COL_STAGGER = 38;    // ms between logos inside a row
+  var LEAD = 110;          // ms after the section label
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var lit = false;
+
+  function measure() {
+    // clear transforms so offsets are read from the settled layout
+    var wasLit = section.classList.contains('logos-in');
+    section.classList.remove('logos-ready', 'logos-in');
+
+    // group by vertical CENTRE, not top: the grid centres its items, so a
+    // taller logo (the Epic Talent circle) sits higher than its row-mates
+    // and would otherwise be read as a row of its own
+    var rows = [], last = null;
+    brands.forEach(function (b) {
+      var r = b.getBoundingClientRect();
+      var mid = Math.round(r.top + r.height / 2);
+      if (last === null || Math.abs(mid - last) > 12) { rows.push([]); last = mid; }
+      rows[rows.length - 1].push(b);
+    });
+
+    // mobile drops to two columns, so the same 15 logos become eight rows.
+    // Tighten the step as rows multiply, otherwise the tail runs past a
+    // second and the last row feels stranded.
+    var step = Math.max(55, Math.min(ROW_STAGGER, 620 / rows.length));
+
+    rows.forEach(function (row, r) {
+      row.forEach(function (b, c) {
+        b.style.setProperty('--lg-d',
+          Math.round(LEAD + r * step + c * COL_STAGGER) + 'ms');
+      });
+    });
+
+    section.classList.add('logos-ready');
+    if (wasLit) section.classList.add('logos-in');
+    return rows.length;
+  }
+
+  if (reduce) { section.classList.add('logos-ready'); return; }
+
+  function ready(fn) {
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fn);
+    else fn();
+  }
+
+  ready(function () {
+    measure();
+
+    function light() {
+      if (lit) return;
+      lit = true;
+      section.classList.add('logos-in');
+    }
+
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (es) {
+        es.forEach(function (e) { if (e.isIntersecting) { light(); io.disconnect(); } });
+      }, { rootMargin: '0px 0px -18% 0px', threshold: 0 });
+      io.observe(section);
+    }
+
+    function sweep() {
+      if (lit) return;
+      if (section.getBoundingClientRect().top < window.innerHeight * 0.85) light();
+    }
+    var ticking = false;
+    window.addEventListener('scroll', function () {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(function () { sweep(); ticking = false; });
+    }, { passive: true });
+    window.addEventListener('load', sweep);
+    window.addEventListener('routechange', function () { setTimeout(sweep, 0); });
+    setTimeout(sweep, 300);
+
+    // column count changes with width — re-measure, without replaying
+    var rt, w = window.innerWidth;
+    window.addEventListener('resize', function () {
+      if (window.innerWidth === w) return;
+      w = window.innerWidth;
+      clearTimeout(rt);
+      rt = setTimeout(function () {
+        if (lit) {
+          brands.forEach(function (b) { b.style.transition = 'none'; });
+          measure();
+          requestAnimationFrame(function () {
+            brands.forEach(function (b) { b.style.transition = ''; });
+          });
+        } else {
+          measure();
+        }
+      }, 180);
+    });
+  });
+})();
+
+/* ------------------------------------------------------------------
    Proof-strip pull quote — line-by-line mask reveal.
 
    The lime highlight runs across word and line boundaries, so there is no
@@ -392,8 +506,8 @@
 ------------------------------------------------------------------- */
 (function () {
   var GROUPS = [
-    ['.clients',      ['.client-marquee-label', '.client-static-grid']],
-    // .proof-strip is handled by the line-reveal module below
+    ['.clients',      ['.client-marquee-label']],
+    // the logo grid and .proof-strip have their own modules below
     ['.pov',          ['.lines', '.kicker', '.lock-big', '.bridge', '.lock-lower', '.pov-copy']],
     ['.work-intro',   ['.lines', '.kicker', '.work-title', '.work-sub', '.work-copy']],
     ['.cards-sec',    ['.card']],
