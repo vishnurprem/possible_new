@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 232 128" role="img" aria-label="Founders Factory Africa">
+  <!-- AFRICA on a solid yellow block (reads as tone on the grayscale wall) -->
+  <rect x="0" y="88" width="165" height="38" fill="#EFE83E"/>
+  <g fill="#111418" font-family="Instrument Sans, Arial, sans-serif" font-weight="800" font-size="42" letter-spacing="-1">
+    <text x="4" y="32">FOUNDERS</text>
+    <text x="4" y="76">FACTORY</text>
+    <text x="4" y="118">AFRICA</text>
+  </g>
+  <!-- yellow dot after FACTORY -->
+  <circle cx="210" cy="71" r="8" fill="#EFE83E"/>
+</svg>

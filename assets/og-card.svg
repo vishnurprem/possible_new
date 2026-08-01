@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<rect width="1200" height="630" fill="#F7F2EA"/>
+<rect x="80" y="96" width="150" height="10" fill="#F0523D"/>
+<rect x="142" y="120" width="210" height="10" fill="#18BEB7"/>
+<rect x="98" y="144" width="285" height="10" fill="#121C2B"/>
+<text x="80" y="330" font-family="Instrument Sans, Arial, sans-serif" font-size="130" font-weight="800" letter-spacing="-7" fill="#121C2B">WE BUILD</text>
+<text x="80" y="440" font-family="Instrument Sans, Arial, sans-serif" font-size="130" font-weight="800" letter-spacing="-7" fill="#121C2B">HUMAN</text>
+<text x="80" y="548" font-family="Georgia, serif" font-size="104" font-weight="700" letter-spacing="-5" fill="#18BEB7">belief &amp; behavior<tspan fill="#F0523D">.</tspan></text>
+<text x="80" y="600" font-family="Instrument Sans, Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="4" fill="#6A7079">THE POSSIBLE</text>
+</svg>
