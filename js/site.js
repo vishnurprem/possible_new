@@ -84,20 +84,6 @@
   });
 })();
 
-/* Scroll reveal — one pass, respects reduced motion */
-(function () {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  if (!('IntersectionObserver' in window)) return;
-  var targets = document.querySelectorAll(
-    '.clients, .proof-strip, .pov, .work-intro, .cards-sec, .approach, .contact, .tp-sec');
-  targets.forEach(function (t) { t.classList.add('reveal'); });
-  var io = new IntersectionObserver(function (entries) {
-    entries.forEach(function (en) {
-      if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
-    });
-  }, { rootMargin: '0px 0px -12% 0px', threshold: 0.06 });
-  targets.forEach(function (t) { io.observe(t); });
-})();
 
 /* ------------------------------------------------------------------
    Hero visual — "alignment, forming".
@@ -230,6 +216,118 @@
   window.addEventListener('routechange', function () { setTimeout(start, 0); });
 
   start();
+})();
+
+/* ------------------------------------------------------------------
+   Scroll reveals.
+
+   One shared system. Each section nominates the children that should
+   animate, they get a 65ms stagger, and the section fires once at ~20%
+   viewport entry. Chains are capped at 6 so nothing turns into a queue.
+------------------------------------------------------------------- */
+(function () {
+  var GROUPS = [
+    ['.clients',      ['.client-marquee-label', '.client-static-grid']],
+    ['.proof-strip',  ['.kicker', '.proof-strip-quote', '.proof-strip-attr', '.text-link']],
+    ['.pov',          ['.lines', '.kicker', '.lock-big', '.bridge', '.lock-lower', '.pov-copy']],
+    ['.work-intro',   ['.lines', '.kicker', '.work-title', '.work-sub', '.work-copy']],
+    ['.cards-sec',    ['.card']],
+    ['.approach',     ['.lines', '.kicker', '.approach-title', '.approach-panel',
+                       '.approach-visual-label', '.approach-circles']],
+    ['.contact',      ['.lines', '.contact h2', '.contact p', '.form']],
+    ['.tp-sec',       ['.tp-sec-title', '.problem-lock', '.tp-tabs', '.tp-panel.on',
+                       '.tp-pov-slide', '.tp-why-grid', '.tp-cta-band']],
+    ['.tp-page-hero', ['.lines', '.tp-kicker', '.tp-page-title', '.v14-page-sub']],
+    ['.about-main',   ['.about-card', '.story']],
+    ['.about-conversation', ['.kicker', '.about-conversation h2', '.about-conversation-right']]
+  ];
+
+  var STAGGER = 65;   // ms between siblings
+  var CAP = 6;        // longest visible chain
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function collect(section, selectors) {
+    var out = [];
+    selectors.forEach(function (sel) {
+      var found = section.querySelectorAll(sel);
+      for (var i = 0; i < found.length; i++) {
+        if (out.indexOf(found[i]) === -1) out.push(found[i]);
+      }
+    });
+    return out;
+  }
+
+  var sections = [];
+  GROUPS.forEach(function (g) {
+    var found = document.querySelectorAll(g[0]);
+    for (var i = 0; i < found.length; i++) {
+      var sec = found[i];
+      // the hero runs its own load choreography — leave it alone
+      if (sec.closest && sec.closest('.hero-modern')) continue;
+      var kids = collect(sec, g[1]);
+      if (!kids.length) continue;
+      kids.forEach(function (el, n) {
+        el.setAttribute('data-rv', '');
+        el.style.setProperty('--rv-d', Math.min(n, CAP) * STAGGER + 'ms');
+        if (el.classList.contains('lines')) el.classList.add('rv-lines');
+        // big display type travels a little further
+        if (/lock-big|lock-lower|work-title|work-sub|tp-page-title|proof-strip-quote/
+              .test(el.className)) {
+          el.style.setProperty('--rv-y', '42px');
+        }
+      });
+      sections.push({ el: sec, kids: kids });
+    }
+  });
+
+  function revealAll(entry) {
+    if (entry.done) return;
+    entry.done = true;
+    entry.kids.forEach(function (el) { el.classList.add('rv-in'); });
+  }
+
+  if (reduce || !('IntersectionObserver' in window)) {
+    sections.forEach(revealAll);
+    return;
+  }
+
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      for (var i = 0; i < sections.length; i++) {
+        if (sections[i].el === en.target) { revealAll(sections[i]); break; }
+      }
+      io.unobserve(en.target);
+    });
+  }, { rootMargin: '0px 0px -20% 0px', threshold: 0 });
+
+  sections.forEach(function (s) { io.observe(s.el); });
+
+  // Safety sweep. A fast scroll, an anchor jump, a restored scroll position
+  // or a browser that batches observer callbacks can all skip a section
+  // entirely — and a section that never intersects would stay at opacity 0
+  // forever. Anything at or above the trigger line gets revealed regardless.
+  function sweep() {
+    var line = window.innerHeight * 0.8;
+    sections.forEach(function (s) {
+      if (s.done) return;
+      if (s.el.getBoundingClientRect().top < line) {
+        revealAll(s);
+        io.unobserve(s.el);
+      }
+    });
+  }
+
+  var ticking = false;
+  window.addEventListener('scroll', function () {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function () { sweep(); ticking = false; });
+  }, { passive: true });
+
+  window.addEventListener('load', sweep);
+  window.addEventListener('routechange', function () { setTimeout(sweep, 0); });
+  setTimeout(sweep, 300);
 })();
 
 /* Mobile card fronts are hidden; carry the title onto the visible face */

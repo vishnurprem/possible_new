@@ -248,10 +248,26 @@ img{max-width:100%}
 /* ---- proof strip: more editorial ---------------------------------- */
 .proof-strip-quote{font-size:clamp(26px,3.2vw,44px);line-height:1.28;text-wrap:balance}
 
-/* ---- section reveals ---------------------------------------------- */
-.reveal{opacity:0;transform:translateY(22px);
-  transition:opacity .75s var(--ease-out),transform .75s var(--ease-out)}
-.reveal.in{opacity:1;transform:none}
+/* ---- scroll reveals ------------------------------------------------
+   One system, applied to a section's own children so the eye can read a
+   sequence instead of a whole block fading at once. Transform + opacity
+   only; the delay is a custom property the observer stamps per element. */
+[data-rv]{
+  opacity:0;
+  transform:translateY(var(--rv-y,30px));
+  transition:opacity .66s var(--ease-out),transform .66s var(--ease-out);
+  transition-delay:var(--rv-d,0ms);
+  will-change:transform,opacity
+}
+[data-rv].rv-in{opacity:1;transform:none;will-change:auto}
+/* the rule motif draws rather than lifts */
+[data-rv].rv-lines{transform:none;opacity:1}
+[data-rv].rv-lines span{transform:scaleX(0);transform-origin:left center;
+  transition:transform .6s var(--ease-out);transition-delay:var(--rv-d,0ms)}
+[data-rv].rv-lines.rv-in span{transform:scaleX(1)}
+[data-rv].rv-lines.rv-in span:nth-child(2){transition-delay:calc(var(--rv-d,0ms) + 90ms)}
+[data-rv].rv-lines.rv-in span:nth-child(3){transition-delay:calc(var(--rv-d,0ms) + 180ms)}
+[data-rv].rv-lines.rv-in span:nth-child(4){transition-delay:calc(var(--rv-d,0ms) + 270ms)}
 
 /* ---- responsive ---------------------------------------------------- */
 @media(max-width:1100px){
@@ -291,6 +307,7 @@ img{max-width:100%}
   .hero-modern .lines span,.hero-modern h1 span,.hero-modern .hero-copy>*,
   .hero-media{animation:none!important;clip-path:none!important}
   .hero-cue:after{animation:none}
-  .reveal{opacity:1!important;transform:none!important;transition:none!important}
+  [data-rv],[data-rv].rv-lines span{
+    opacity:1!important;transform:none!important;transition:none!important}
   .card-back{transition:none}
 }
